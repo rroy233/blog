@@ -48,7 +48,7 @@ export const siteConfig: SiteConfig = {
 	subtitle: "ROY1SME",
 
 	// 站点 URL
-	site_url: "https://roy1s.me",
+	site_url: "https://blog.roy1s.me",
 
 	// 站点描述
 	description:
