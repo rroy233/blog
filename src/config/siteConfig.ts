@@ -51,18 +51,10 @@ export const siteConfig: SiteConfig = {
 	site_url: "https://blog.roy1s.me",
 
 	// 站点描述
-	description:
-		"Roy's Blog ｜ AI ｜ 云原生 ｜ Go后端 ｜ 技术分享",
+	description: "Roy's Blog ｜ AI ｜ 云原生 ｜ Go后端 ｜ 技术分享",
 
 	// 站点关键词
-	keywords: [
-		"Roy",
-		"Roy's Blog",
-		"AI",
-		"云原生",
-		"Go后端",
-		"技术分享",
-	],
+	keywords: ["Roy", "Roy's Blog", "AI", "云原生", "Go后端", "技术分享"],
 
 	// 主题色
 	themeColor: {
