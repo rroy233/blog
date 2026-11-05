@@ -171,6 +171,7 @@ const ogImageAlt = propsOgImageAlt ?? pageTitle;
         {analyticsConfig?.umamiAnalytics?.websiteId && (
           <UmamiAnalytics
           websiteId={analyticsConfig.umamiAnalytics.websiteId}
+				productionUrl={siteConfig.site_url}
           scriptUrl={analyticsConfig.umamiAnalytics.scriptUrl}
           replaysScriptUrl={analyticsConfig.umamiAnalytics.replaysScriptUrl}
           trackOutboundLinks={analyticsConfig.umamiAnalytics.trackOutboundLinks}

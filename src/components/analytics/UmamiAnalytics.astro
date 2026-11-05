@@ -1,6 +1,7 @@
 ---
 interface Props {
 	websiteId: string;
+	productionUrl: string;
 	scriptUrl?: string;
 	replaysScriptUrl?: string;
 	trackOutboundLinks?: boolean;
@@ -16,6 +17,7 @@ interface Props {
 
 const {
 	websiteId,
+	productionUrl,
 	scriptUrl,
 	replaysScriptUrl,
 	trackOutboundLinks = true,
@@ -28,61 +30,93 @@ const replaysSampleRate = replays?.sampleRate ?? 0.15;
 const replaysMaskLevel = replays?.maskLevel ?? "moderate";
 const replaysMaxDuration = replays?.maxDuration ?? 300000;
 const replaysBlockSelector = replays?.blockSelector?.trim();
+const isDevelopment = import.meta.env.DEV;
 ---
 
 <script
 	is:inline
 	data-swup-ignore-script
-	defer
-	src={scriptUrl}
-	data-website-id={websiteId}
-	data-performance={collectWebVitals ? "true" : undefined}
-></script>
+	define:vars={{
+		websiteId,
+		productionUrl,
+		scriptUrl,
+		replaysEnabled,
+		replaysScriptUrl,
+		replaysSampleRate,
+		replaysMaskLevel,
+		replaysMaxDuration,
+		replaysBlockSelector,
+		trackOutboundLinks,
+		collectWebVitals,
+		isDevelopment,
+	}}
+>
+	;(() => {
+		let productionHostname;
+		try {
+			productionHostname = new URL(productionUrl).hostname;
+		} catch {
+			return;
+		}
 
-{
-	replaysEnabled && (
-		<script
-			is:inline
-			data-swup-ignore-script
-			defer
-			src={replaysScriptUrl}
-			data-website-id={websiteId}
-			data-sample-rate={String(replaysSampleRate)}
-			data-mask-level={replaysMaskLevel}
-			data-max-duration={String(replaysMaxDuration)}
-			data-block-selector={replaysBlockSelector || undefined}
-		/>
-	)
-}
+		// 静态站点在构建期无法得知部署域名，因此在浏览器中判断，避免本地、预览
+		// 或镜像站加载 Umami SDK 并上报访问。
+		if (
+			isDevelopment ||
+			window.location.hostname !== productionHostname ||
+			!scriptUrl
+		) {
+			return;
+		}
 
-{
-	trackOutboundLinks && (
-		<script is:inline data-swup-ignore-script>
-			;(() => {
-				const name = 'outbound-link-click'
+		const appendScript = (src, attributes) => {
+			const script = document.createElement("script");
+			script.src = src;
+			script.async = false;
+			Object.entries(attributes).forEach(([name, value]) => {
+				if (value) script.setAttribute(name, value);
+			});
+			document.head.append(script);
+		};
 
-				const applyOutboundTracking = () => {
-					document.querySelectorAll('a').forEach((a) => {
-						if (
-							a.host !== window.location.host &&
-							!a.getAttribute('data-umami-event')
-						) {
-							a.setAttribute('data-umami-event', name)
-							a.setAttribute('data-umami-event-url', a.href)
-						}
-					})
+		appendScript(scriptUrl, {
+			"data-website-id": websiteId,
+			"data-performance": collectWebVitals ? "true" : "",
+		});
+
+		if (replaysEnabled && replaysScriptUrl) {
+			appendScript(replaysScriptUrl, {
+				"data-website-id": websiteId,
+				"data-sample-rate": String(replaysSampleRate),
+				"data-mask-level": replaysMaskLevel,
+				"data-max-duration": String(replaysMaxDuration),
+				"data-block-selector": replaysBlockSelector || "",
+			});
+		}
+
+		if (!trackOutboundLinks) return;
+
+		const name = "outbound-link-click";
+		const applyOutboundTracking = () => {
+			document.querySelectorAll("a").forEach((anchor) => {
+				if (
+					anchor.host !== window.location.host &&
+					!anchor.getAttribute("data-umami-event")
+				) {
+					anchor.setAttribute("data-umami-event", name);
+					anchor.setAttribute("data-umami-event-url", anchor.href);
 				}
+			});
+		};
 
-				if (document.readyState === 'loading') {
-					document.addEventListener('DOMContentLoaded', applyOutboundTracking, {
-						once: true,
-					})
-				} else {
-					applyOutboundTracking()
-				}
+		if (document.readyState === "loading") {
+			document.addEventListener("DOMContentLoaded", applyOutboundTracking, {
+				once: true,
+			});
+		} else {
+			applyOutboundTracking();
+		}
 
-				document.addEventListener('astro:page-load', applyOutboundTracking)
-			})()
-		</script>
-	)
-}
+		document.addEventListener("astro:page-load", applyOutboundTracking);
+	})();
+</script>
