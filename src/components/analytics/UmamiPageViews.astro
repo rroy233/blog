@@ -1,0 +1,93 @@
+---
+import { Icon } from "astro-icon/components";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+
+interface Props {
+	path: string;
+	statsUrl: string;
+	compact?: boolean;
+}
+
+const { path, statsUrl, compact = false } = Astro.props;
+---
+
+<div
+  class:list={[
+    "flex items-center",
+    compact ? "gap-1 whitespace-nowrap" : "flex-row",
+  ]}
+  data-umami-pageviews
+  data-path={path}
+  data-stats-url={statsUrl}
+  data-error-text={i18n(I18nKey.pageViewsError)}
+>
+  {
+    compact ? (
+      <Icon name="material-symbols:visibility-outline-rounded" class="text-base" />
+    ) : (
+      <div class="transition h-6 w-6 rounded-md bg-black/5 dark:bg-white/10 text-black/50 dark:text-white/50 flex items-center justify-center mr-2">
+        <Icon name="material-symbols:visibility-outline-rounded" />
+      </div>
+    )
+  }
+  <div class={compact ? undefined : "text-sm"}>
+    <span>{i18n(I18nKey.pageViews)}</span>
+    {" "}
+    <span data-umami-pageviews-value aria-live="polite">
+      {i18n(I18nKey.pageViewsLoading)}
+    </span>
+  </div>
+</div>
+
+<script is:inline>
+	(() => {
+		const normalizePath = (path) => {
+			try {
+				path = new URL(path, window.location.origin).pathname;
+			} catch {
+				// 接口返回的 name 预期是路径；无法解析时直接按原值比较。
+			}
+
+			return decodeURIComponent(path).replace(/\/+$/, "") || "/";
+		};
+
+		const loadUmamiPageViews = async () => {
+			const containers = document.querySelectorAll("[data-umami-pageviews]");
+
+			for (const container of containers) {
+				const value = container.querySelector("[data-umami-pageviews-value]");
+				const path = container.getAttribute("data-path");
+				const statsUrl = container.getAttribute("data-stats-url");
+				if (!value || !path || !statsUrl) continue;
+
+				try {
+					const response = await fetch(statsUrl);
+					if (!response.ok) {
+						throw new Error(`Failed to load Umami stats: ${response.status}`);
+					}
+
+					const stats = await response.json();
+					if (!Array.isArray(stats)) {
+						throw new Error("Unexpected Umami stats response");
+					}
+
+					const targetPath = normalizePath(path);
+					const pageviews = stats.find(
+						(stat) =>
+							typeof stat?.name === "string" &&
+							normalizePath(stat.name) === targetPath,
+					)?.pageviews;
+					const count = Number(pageviews);
+					value.textContent = new Intl.NumberFormat(
+						document.documentElement.lang,
+					).format(Number.isFinite(count) ? count : 0);
+				} catch {
+					value.textContent = container.getAttribute("data-error-text") || "—";
+				}
+			}
+		};
+
+		loadUmamiPageViews();
+	})();
+</script>

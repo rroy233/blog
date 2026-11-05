@@ -8,11 +8,13 @@ export const analyticsConfig: AnalyticsConfig = {
 	// Umami 统计配置
 	umamiAnalytics: {
 		// Umami Website ID
-		websiteId: "",
+		websiteId: "64798570-467a-4749-977d-da3456719139",
 		// Umami JS地址，支持使用自建
-		scriptUrl: "https://cloud.umami.is/script.js",
+		scriptUrl: "/assets/js/umami/script.js",
 		// Umami 会话回放脚本地址，支持使用自建
-		replaysScriptUrl: "https://cloud.umami.is/recorder.js",
+		replaysScriptUrl: "/assets/js/umami/recorder.js",
+		// 用于文章顶部浏览量展示的公开统计 API，留空即可关闭显示
+		statsApiUrl: "https://api.roy233.com/umami-stats/stats?app_id=blog",
 		// 是否追踪出站链接
 		trackOutboundLinks: true,
 		// 是否收集浏览器性能指标
