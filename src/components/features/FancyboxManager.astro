@@ -4,9 +4,29 @@
 
 <script>
   let Fancybox: any;
-  const IMG_SELECTOR = ".custom-md img:not(.card-wiki-link img), #post-cover img, .moment-images img";
+  const EXCALIDRAW_PREVIEW_SELECTOR = '.custom-md img[src*="/excalidraw-preview/"]';
+  const EXCALIDRAW_SELECTOR = ".custom-md img[data-excalidraw-scene], " + EXCALIDRAW_PREVIEW_SELECTOR;
+  const IMG_SELECTOR = ".custom-md img:not(.card-wiki-link img):not([data-excalidraw-scene]):not([src*='/excalidraw-preview/']), #post-cover img, .moment-images img";
   const LINK_SELECTOR = ".moment-images a[data-fancybox], [data-fancybox]:not(.moment-images a)";
   const svgBlobUrlCache = new Map<string, string>();
+  const DEBUG_FANCYBOX = import.meta.env.DEV;
+
+  function describeElement(el: Element) {
+    return {
+      tagName: el.tagName,
+      srcAttribute: el.getAttribute("src"),
+      currentSrc: el instanceof HTMLImageElement ? el.currentSrc : undefined,
+      href: el.getAttribute("href"),
+      dataExcalidrawScene: el.getAttribute("data-excalidraw-scene"),
+      matchesImageSelector: el.matches(IMG_SELECTOR),
+      matchesExcalidrawSelector: el.matches(EXCALIDRAW_SELECTOR),
+    };
+  }
+
+  function logFancyboxDiagnostic(message: string, detail?: unknown) {
+    if (!DEBUG_FANCYBOX) return;
+    console.info(`[Fancybox diagnostic] ${message}`, detail);
+  }
 
   function isSvgSrc(src: string): boolean {
     if (!src) return false;
@@ -49,9 +69,20 @@
     }
   }
 
-  async function getSvgBlobUrl(src: string, fallbackW: number, fallbackH: number): Promise<string | null> {
+  async function getSvgBlobUrl(
+    src: string,
+    fallbackW: number,
+    fallbackH: number,
+    sourceElement: Element,
+  ): Promise<string | null> {
     const cached = svgBlobUrlCache.get(src);
-    if (cached) return cached;
+    if (cached) {
+      logFancyboxDiagnostic("Reusing SVG Blob URL", {
+        source: src,
+        element: describeElement(sourceElement),
+      });
+      return cached;
+    }
     try {
       const resp = await fetch(src);
       if (!resp.ok) { console.debug("[Fancybox] SVG fetch failed:", resp.status, src); return null; }
@@ -76,6 +107,14 @@
       const blob = new Blob([new XMLSerializer().serializeToString(svgEl)], { type: "image/svg+xml" });
       const blobUrl = URL.createObjectURL(blob);
       svgBlobUrlCache.set(src, blobUrl);
+      if (DEBUG_FANCYBOX) {
+        console.warn("[Fancybox diagnostic] Created SVG Blob URL", {
+          source: src,
+          blobUrl,
+          element: describeElement(sourceElement),
+          stack: new Error().stack,
+        });
+      }
       return blobUrl;
     } catch (err) { console.debug("[Fancybox] SVG preprocess error:", src, err); return null; }
   }
@@ -88,7 +127,7 @@
       },
       Toolbar: {
         display: {
-          left: ["infobar"],
+          left: ["counter"],
           middle: [
             "zoomIn",
             "zoomOut",
@@ -125,17 +164,72 @@
     };
   }
 
+  function getExcalidrawOptions() {
+    const editButton = {
+      tpl: '<button class="f-button excalidraw-edit-button" type="button" title="在 Excalidraw 中编辑" aria-label="在 Excalidraw 中编辑"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3ZM5 5h6v2H7v10h10v-4h2v6H5V5Z"/></svg></button>',
+      click: (carousel: any) => {
+        const activeSlide = carousel.getPage()?.slides?.[0];
+        const rawScenePath = activeSlide?.triggerEl?.getAttribute("data-excalidraw-scene");
+        if (!rawScenePath) {
+          logFancyboxDiagnostic("Excalidraw edit button could not find a scene URL", activeSlide);
+          return;
+        }
+
+        const sceneUrl = new URL(rawScenePath, window.location.origin).href;
+        const editorUrl = `https://excalidraw.com/#url=${encodeURIComponent(sceneUrl)}`;
+        logFancyboxDiagnostic("Opening Excalidraw editor", { sceneUrl, editorUrl });
+        window.open(editorUrl, "_blank", "noopener,noreferrer");
+      },
+    };
+
+    return {
+      ...getCommonOptions(),
+      groupAll: false,
+      // Excalidraw 预览是单张图片。禁用 Hash 插件，避免打开灯箱时写入
+      // #excalidraw 并触发站点的路由生命周期。
+      Hash: false,
+      Carousel: {
+        transition: "slide",
+        preload: 2,
+        Toolbar: {
+          items: { excalidrawEdit: editButton },
+          display: {
+            left: ["counter"],
+            middle: [
+              "zoomIn",
+              "zoomOut",
+              "toggle1to1",
+              "rotateCCW",
+              "rotateCW",
+              "flipX",
+              "flipY",
+            ],
+            right: ["excalidrawEdit", "slideshow", "thumbs", "close"],
+          },
+        },
+      },
+    };
+  }
+
   async function preprocessSvgImages() {
     const promises: Promise<void>[] = [];
+
+    if (DEBUG_FANCYBOX) {
+      const excalidrawPreviews = Array.from(
+        document.querySelectorAll<HTMLImageElement>(EXCALIDRAW_PREVIEW_SELECTOR),
+      ).map(describeElement);
+      logFancyboxDiagnostic("Excalidraw preview selector state before SVG preprocessing", excalidrawPreviews);
+    }
 
     document.querySelectorAll<HTMLImageElement>(IMG_SELECTOR).forEach((img) => {
       if (img.dataset.svgFixed) return;
       const src = img.getAttribute("src") || "";
       if (!isSvgSrc(src)) return;
+      logFancyboxDiagnostic("SVG image selected for Blob preprocessing", describeElement(img));
       const fallbackW = img.naturalWidth || img.clientWidth || 1600;
       const fallbackH = img.naturalHeight || img.clientHeight || 900;
       promises.push(
-        getSvgBlobUrl(src, fallbackW, fallbackH).then((blobUrl) => {
+        getSvgBlobUrl(src, fallbackW, fallbackH, img).then((blobUrl) => {
           if (blobUrl) {
             img.dataset.originalSrc = src;
             img.src = blobUrl;
@@ -150,8 +244,9 @@
       const attr = el.hasAttribute("data-src") ? "data-src" : "href";
       const svgSrc = el.getAttribute(attr) || "";
       if (!isSvgSrc(svgSrc)) return;
+      logFancyboxDiagnostic("SVG link selected for Blob preprocessing", describeElement(el));
       promises.push(
-        getSvgBlobUrl(svgSrc, 1600, 900).then((blobUrl) => {
+        getSvgBlobUrl(svgSrc, 1600, 900, el).then((blobUrl) => {
           if (blobUrl) {
             el.dataset.originalSrc = svgSrc;
             el.setAttribute(attr, blobUrl);
@@ -165,7 +260,7 @@
   }
 
   async function setup() {
-    if (!document.querySelector(IMG_SELECTOR) && !document.querySelector(LINK_SELECTOR)) return;
+    if (!document.querySelector(IMG_SELECTOR) && !document.querySelector(LINK_SELECTOR) && !document.querySelector(EXCALIDRAW_SELECTOR)) return;
 
     await injectFancyboxCss();
 
@@ -182,6 +277,7 @@
     // previous bindings before re-binding after client-rendered content appears.
     Fancybox.unbind(IMG_SELECTOR);
     Fancybox.unbind(LINK_SELECTOR);
+    Fancybox.unbind(EXCALIDRAW_SELECTOR);
 
     Fancybox.bind(IMG_SELECTOR, {
       ...commonOptions,
@@ -195,6 +291,10 @@
     Fancybox.bind(`${LINK_SELECTOR}:not(dynamic-gallery [data-gallery-lightbox])`, {
       ...commonOptions,
       source: (el: any) => el.getAttribute("data-src") || el.getAttribute("href"),
+    });
+
+    Fancybox.bind(EXCALIDRAW_SELECTOR, {
+      ...getExcalidrawOptions(),
     });
 
   }

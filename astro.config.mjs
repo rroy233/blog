@@ -44,6 +44,7 @@ import rehypeEmailProtection from "./src/plugins/rehype-email-protection.mjs";
 import rehypeExternalLinks from "./src/plugins/rehype-external-links.mjs";
 import rehypeFigure from "./src/plugins/rehype-figure.mjs";
 import rehypeImageReferrerPolicy from "./src/plugins/rehype-image-referrerpolicy.mjs";
+import { rehypeExcalidraw } from "./src/plugins/rehype-excalidraw.mjs";
 import { rehypeMermaid } from "./src/plugins/rehype-mermaid.mjs";
 import { rehypePlantuml } from "./src/plugins/rehype-plantuml.mjs";
 import { parseDirectiveNode } from "./src/plugins/remark-directive-rehype.js";
@@ -64,6 +65,20 @@ const adapter = process.env.CF_WORKERS
 			prerenderEnvironment: "node",
 		})
 	: undefined;
+
+// .excalidraw 文件由 Markdown rehype 插件读取，其内容哈希会决定图片 URL。
+// Vite 无法从该文件系统读取关系推导出 Markdown 依赖，因此修改场景后主动
+// 失效模块图并刷新页面，让新哈希和新的静态预览地址立即生效。
+const excalidrawContentReload = {
+	name: "firefly:excalidraw-content-reload",
+	handleHotUpdate({ file, server }) {
+		if (!file.endsWith(".excalidraw")) return;
+
+		server.moduleGraph.invalidateAll();
+		server.ws.send({ type: "full-reload", path: "*" });
+		return [];
+	},
+};
 
 // https://astro.build/config
 export default defineConfig({
@@ -308,6 +323,7 @@ export default defineConfig({
 				rehypeCodeGroup,
 				[rehypeMermaid, mermaidConfig],
 				rehypePlantuml,
+				rehypeExcalidraw,
 				rehypeDiagramPanZoom,
 				rehypeFigure,
 				[
@@ -351,7 +367,7 @@ export default defineConfig({
 		}),
 	},
 	vite: {
-		plugins: [tailwindcss()],
+		plugins: [tailwindcss(), excalidrawContentReload],
 		server: {
 			watch: {
 				ignored: ["**/package/**", "**/Firefly-docs/**"],
