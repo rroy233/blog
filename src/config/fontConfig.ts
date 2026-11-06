@@ -26,32 +26,71 @@ import type { FontDefinition, FontSelectionConfig } from "@/types/fontConfig";
 // ─── Astro Font API 字体定义 ───────────────────────────────
 // 适用于 Astro Font API 的字体配置，支持自动下载、缓存和优化加载
 // 本地开发调试的情况下，修改后需要每次重启开发服务器才能生效
+
+const LATIN_UNICODE_RANGE =
+	"U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD";
+const CYRILLIC_UNICODE_RANGE =
+	"U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116";
+
+/**
+ * 从已安装的 @fontsource 包读取字体文件。
+ *
+ * Astro 会将这些文件复制到构建产物，不会在构建期访问 jsDelivr。
+ */
+function localFontsourceVariants(font: string, weights: string[]) {
+	return weights.flatMap((weight) => [
+		{
+			src: [`@fontsource/${font}/files/${font}-latin-${weight}-normal.woff2`],
+			weight,
+			style: "normal",
+			unicodeRange: [LATIN_UNICODE_RANGE],
+		},
+		{
+			src: [`@fontsource/${font}/files/${font}-cyrillic-${weight}-normal.woff2`],
+			weight,
+			style: "normal",
+			unicodeRange: [CYRILLIC_UNICODE_RANGE],
+		},
+	]);
+}
+
 export const fontsList: FontDefinition[] = [
 	{
 		name: "Zen Maru Gothic",
 		cssVariable: "--font-zen-maru-gothic",
-		provider: "fontsource",
-		weights: ["300", "400", "500", "600", "700"],
-		styles: ["normal"],
-		subsets: ["latin", "cyrillic"],
+		provider: "local",
+		options: {
+			variants: localFontsourceVariants("zen-maru-gothic", [
+				"300",
+				"400",
+				"500",
+				"700",
+			]),
+		},
 		fallbacks: ["sans-serif"],
 	},
 	{
 		name: "Inter",
 		cssVariable: "--font-inter",
-		provider: "fontsource",
-		weights: ["300", "400", "500", "600", "700"],
-		styles: ["normal"],
-		subsets: ["latin", "cyrillic"],
+		provider: "local",
+		options: {
+			variants: localFontsourceVariants("inter", [
+				"300",
+				"400",
+				"500",
+				"600",
+				"700",
+			]),
+		},
 		fallbacks: ["sans-serif"],
 	},
 	{
 		name: "JetBrains Mono",
 		cssVariable: "--font-jetbrains-mono",
-		provider: "fontsource",
-		weights: ["400", "700"],
-		styles: ["normal"],
-		subsets: ["latin", "cyrillic"],
+		provider: "local",
+		options: {
+			variants: localFontsourceVariants("jetbrains-mono", ["400", "700"]),
+		},
 		fallbacks: [
 			"ui-monospace",
 			"SFMono-Regular",

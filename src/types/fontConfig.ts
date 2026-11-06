@@ -49,6 +49,7 @@ export type FontDefinition = {
 			src: string[];
 			weight?: string | number;
 			style?: string;
+		unicodeRange?: string[];
 		}>;
 		[key: string]: unknown;
 	};
