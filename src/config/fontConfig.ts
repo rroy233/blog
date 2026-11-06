@@ -46,7 +46,9 @@ function localFontsourceVariants(font: string, weights: string[]) {
 			unicodeRange: [LATIN_UNICODE_RANGE],
 		},
 		{
-			src: [`@fontsource/${font}/files/${font}-cyrillic-${weight}-normal.woff2`],
+			src: [
+				`@fontsource/${font}/files/${font}-cyrillic-${weight}-normal.woff2`,
+			],
 			weight,
 			style: "normal",
 			unicodeRange: [CYRILLIC_UNICODE_RANGE],
