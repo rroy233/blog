@@ -95,9 +95,10 @@ async function getExporter(): Promise<ExcalidrawExporter> {
 		if (!packageExports.exportToSvg) {
 			throw new Error("未找到 Excalidraw SVG 导出 API");
 		}
+		const exportToSvg = packageExports.exportToSvg;
 
 		return (scene) =>
-			packageExports.exportToSvg!(scene, {
+			exportToSvg(scene, {
 				exportBackground: true,
 				exportPadding: 16,
 				embedScene: false,
