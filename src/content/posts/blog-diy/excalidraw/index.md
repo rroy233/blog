@@ -4,7 +4,6 @@ published: 2026-11-06
 image: ./screenshot.png
 tags: [Blog, DIY, "Excalidraw"]
 category: "DIY"
-draft: true
 ---
 
 Excalidraw 很适合画架构图、流程图和随手笔记，但普通图片在博客中无法继续编辑。这里为文章加入 `.excalidraw` 文件支持：博客展示静态预览，原始文件仍保留在仓库中。
