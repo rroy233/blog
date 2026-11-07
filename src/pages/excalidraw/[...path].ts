@@ -9,9 +9,10 @@ export const prerender = true;
 export const getStaticPaths: GetStaticPaths = () =>
 	excalidrawSceneFiles.map(({ relativePath, source, hash }) => ({
 		params: {
-			path: getExcalidrawSceneAssetPaths(relativePath, hash)
-				.rawScenePath.replace("/excalidraw/", "")
-				.replace(/\/$/, ""),
+			path: getExcalidrawSceneAssetPaths(
+				relativePath,
+				hash,
+			).rawScenePath.replace("/excalidraw/", ""),
 		},
 		props: { source },
 	}));

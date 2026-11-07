@@ -35,7 +35,6 @@ export function getExcalidrawSceneAssetPaths(
 ): { previewPath: string; rawScenePath: string } {
 	return {
 		previewPath: `/excalidraw-preview/${toExcalidrawPreviewPath(relativePath, hash)}`,
-		// 站点配置使用 trailingSlash: "always"，静态端点的真实地址带尾部斜杠。
-		rawScenePath: `/excalidraw/${addExcalidrawContentHash(relativePath, hash)}/`,
+		rawScenePath: `/excalidraw/${addExcalidrawContentHash(relativePath, hash)}`,
 	};
 }

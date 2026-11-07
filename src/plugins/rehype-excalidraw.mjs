@@ -73,10 +73,9 @@ export function rehypeExcalidraw() {
 			const previewPath = `/excalidraw-preview/${encodePath(
 				toExcalidrawPreviewPath(relativeScenePath, hash),
 			)}`;
-			// 站点配置使用 trailingSlash: "always"，静态端点的真实地址带尾部斜杠。
 			const rawScenePath = `/excalidraw/${encodePath(
 				addExcalidrawContentHash(relativeScenePath, hash),
-			)}/`;
+			)}`;
 			// 保持 Markdown 图片的原始节点与属性，让后续 figure 插件、文章样式和
 			// 通用图片浏览器沿用同一条路径。该标记只供 Fancybox 工具栏读取场景地址。
 			node.properties.src = previewPath;
